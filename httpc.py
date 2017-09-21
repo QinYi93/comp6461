@@ -20,6 +20,17 @@ def create_http():
                 if len(split_head) == 2:
                     header = header + "\r\n" + split_head[0] + ": " + split_head[1]
         h.setHeader(header)
+    #read the data or file to send it as content in post message and add content-Type of header
+    body = ""
+    if args.data:
+        body = json.dumps(args.data)
+        h.setData(body)
+        h.setHeader(["Content-Type:application/json", "Content-Length: "+str(len(body))])
+    if args.file:
+        with open(args.file, 'r') as f:
+            body = f.read()
+        h.setFile(body)
+        h.setHeader(["Content-Type:application/json", "Content-Length: " + str(len(body))])
     h.constructContent()
     return h
 

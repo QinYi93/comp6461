@@ -23,6 +23,7 @@ class http:
 
     def setVerbosity(self, v):
         self.verbosity = v
+
     def getVerbosity(self):
         return self.verbosity
 
@@ -32,6 +33,15 @@ class http:
     def setType(self, type):
         self.type = type
 
+    def getType(self):
+        return self.type
+
+    def setData(self, data):
+        self.data = data
+
+    def setFile(self, file):
+        self.file = file
+
     def constructContent(self):
         path = self.url.path
         if path == "":
@@ -40,5 +50,14 @@ class http:
             query = "?"+self.url.query
         else:
             query = ""
-     
-        self.content = self.type.upper() + " " + path + query + " HTTP/1.0" + self.header + "\r\n\r\n"
+    # construct get message
+        if self.type == "get":
+           self.content = self.type.upper() + " " + path + query + " HTTP/1.0" + self.header + "\r\n\r\n"
+
+    # construct post message with data or file
+        if self.type == "post":
+            if self.data:
+                self.content = self.type.upper() + " " + path + " HTTP/1.0" + self.header + "\r\n\r\n" + self.data
+            if self.file:
+                self.content = self.type.upper() + " " + path + " HTTP/1.0" + self.header + "\r\n\r\n" + self.file
+
