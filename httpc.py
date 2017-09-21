@@ -1,10 +1,10 @@
-#   python .\httpc.py get -v 'http://httpbin.org/get?course=networking&assignment=1'
-#   python .\httpc.py post -v -head 'Content-Length:0' 'http://httpbin.org/post?course=networking&assignment=1'
-import argparse
+#   python httpc.py get -v 'http://httpbin.org/get?course=networking&assignment=1'
+#   python httpc.py post -v -head Accept:application/json -d '{"test":"test"}' 'http://httpbin.org/post'
+#   python httpc.py post -v -head Accept:application/json -f 'test.json' 'http://httpbin.org/post'
 import sys
 from socket import *
 import json
-
+import argparse
 from http import http
 
 def create_http():
@@ -22,15 +22,18 @@ def create_http():
         h.setHeader(header)
     #read the data or file to send it as content in post message and add content-Type of header
     body = ""
-    if args.data:
-        body = json.dumps(args.data)
-        h.setData(body)
-        h.setHeader(["Content-Type:application/json", "Content-Length: "+str(len(body))])
-    if args.file:
-        with open(args.file, 'r') as f:
-            body = f.read()
-        h.setFile(body)
-        h.setHeader(["Content-Type:application/json", "Content-Length: " + str(len(body))])
+    if args.which == "post":
+       if args.data:
+            body = json.dumps(args.data)
+            h.setData(body)
+            h.setHeader("\r\n" + "Content-Type:application/json")
+            h.setHeader("\r\n" + "Content-Length: "+str(len(body)))
+       if args.file:
+            with open(args.file, 'r') as f:
+                body = f.read()
+            h.setFile(body)
+            h.setHeader("\r\n" + "Content-Type:application/json")
+            h.setHeader("\r\n" + "Content-Length: " + str(len(body)))
     h.constructContent()
     return h
 

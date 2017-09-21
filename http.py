@@ -1,6 +1,6 @@
 import socket
 import sys
-from urllib.parse import urlparse
+from urlparse import urlparse
 # from urllib.parse import urlencode
 class http:
 
@@ -9,6 +9,9 @@ class http:
         self.host = self.url.netloc
         self.verbosity = False
         self.header = "\r\nHOST: " + self.host
+        self.data = ""
+        self.file = ""
+        self.content = ""
     
     def send(self):
         conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
