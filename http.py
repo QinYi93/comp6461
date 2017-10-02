@@ -16,20 +16,25 @@ class http:
         self.data = ""
         self.file = ""
         self.content = ""
-
+        self.state = ""
+        self.headMap = {}
+        self.body = ""
+        self.reply = ""
     def status(self, reply):
-        (head, body) = reply.split("\r\n\r\n")
+        self.reply = reply
+        (head, self.body) = reply.split("\r\n\r\n")
         headArray = head.split("\r\n")
         line1 = headArray.pop(0).split()
         # if line1[1] == '200':
+        self.state = line1[1]
         print "\n====>Status:"+" ".join(line1[2:]) + "  Code:" + line1[1]
-        headMap = {}
+        self.headMap = {}
         for key in headArray:
             keyValue = key.split(":")
-            headMap[keyValue[0]] = keyValue[1].strip()
-        if line1[1] == '302' and self.counting<6:
+            self.headMap[keyValue[0]] = keyValue[1].strip()
+        if line1[1] == '302' and self.counting < 6:
             # r_url = urlparse("http://www.baidu.com")
-            r_url = urlparse(headMap["Location"])
+            r_url = urlparse(self.headMap["Location"])
             # print(r_url)
             if r_url.netloc:
                 self.host = r_url.netloc
@@ -41,7 +46,7 @@ class http:
                 self.path = "/"
             self.constructContent()
             return self.send()
-        return reply
+        return self
     def send(self):
         self.counting = self.counting+1
         conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

@@ -4,6 +4,8 @@
 #   python httpc.py post -v -head Content-Type:application/json -d '{"Assignment":"1"}' -o 'output.txt' 'http://httpbin.org/post'
 #   python httpc.py post -v -head Content-Type:application/json -f 'file.json' -o 'output.txt' 'http://httpbin.org/post'
 #   python httpc.py get -v 'http://httpbin.org/redirect/5'
+#   Test Case
+#   python httptest.py -v
 import sys
 from socket import *
 import json
@@ -72,9 +74,9 @@ h = create_http()
 reply = h.send()
 if args.output:
     o = open(args.output, 'w')
-    o.write(reply.split("\r\n\r\n",1)[1])
+    o.write(reply.body)
     o.close()
 if h.getVerbosity():
-    print("\nOutput:\n\n" + reply)
+    print("\nOutput:\n\n" + reply.reply)
 else:
-    print("\nOutput:\n\n" + reply.split("\r\n\r\n",1)[1])
+    print("\nOutput:\n\n" + reply.body)
