@@ -1,6 +1,9 @@
+#   python httpc.py get -h
+#   python httpc.py post -h
 #   python httpc.py get -v 'http://httpbin.org/get?course=networking&assignment=1'
-#   python httpc.py post -v -head Accept:application/json -d '{"test":"test"}' -o 'output.txt' 'http://httpbin.org/post'
-#   python httpc.py post -v -head Accept:application/json -f 'test.json' -o output.txt 'http://httpbin.org/post'
+#   python httpc.py post -v -head Content-Type:application/json -d '{"Assignment":"1"}' -o 'output.txt' 'http://httpbin.org/post'
+#   python httpc.py post -v -head Content-Type:application/json -f 'file.json' -o 'output.txt' 'http://httpbin.org/post'
+#   python httpc.py get -v 'http://httpbin.org/redirect/5'
 import sys
 from socket import *
 import json
@@ -18,22 +21,23 @@ def create_http():
             for head in args.headers:
                 split_head = head.split(":")
                 if len(split_head) == 2:
-                    header = header + "\r\n" + split_head[0] + ": " + split_head[1]
-        h.setHeader(header)
+                    h.addHeader(split_head[0], split_head[1])
     #read the data or file to send it as content in post message and add content-Type of header
     body = ""
     if args.which == "post":
        if args.data:
             body = json.dumps(args.data)
             h.setData(body)
-            h.setHeader("\r\n" + "Content-Type:application/json")
-            h.setHeader("\r\n" + "Content-Length: "+str(len(body)))
+            if "Content-Type" not in h.header.keys():
+                h.addHeader("Content-Type", "application/json")#"\r\n" + "Content-Type: application/json")
+            h.addHeader("Content-Length",str(len(body)))
        if args.file:
             with open(args.file, 'r') as f:
                 body = f.read()
             h.setFile(body)
-            h.setHeader("\r\n" + "Content-Type:application/json")
-            h.setHeader("\r\n" + "Content-Length: " + str(len(body)))
+            if "Content-Type" not in h.header.keys():
+                h.addHeader("Content-Type", "application/json")#"\r\n" + "Content-Type: application/json")
+            h.addHeader("Content-Length",str(len(body)))
     h.constructContent()
     return h
 
@@ -57,14 +61,13 @@ group.add_argument("-f", action="store", dest="file", default="", help="Associat
 post_parser.add_argument("-o", action="store", dest="output" , default = "", help = "Output the body to a file", required = False)
 post_parser.set_defaults(which='post')
 
-help_parser = subparsers.add_parser('help', help='prints this screen.')
-help_parser.set_defaults(which='help')
+# help_parser = subparsers.add_parser('help', help='prints this screen.')
+# help_parser.set_defaults(which='help')
 
 parser.add_argument("URL", help="HTTP URL address")
 
 args = parser.parse_args()
-# print(args)
-# parser.print_help()
+
 h = create_http()
 reply = h.send()
 if args.output:
@@ -72,4 +75,6 @@ if args.output:
     o.write(reply.split("\r\n\r\n",1)[1])
     o.close()
 if h.getVerbosity():
-    print("Reply:\n" + reply)
+    print("\nOutput:\n\n" + reply)
+else:
+    print("\nOutput:\n\n" + reply.split("\r\n\r\n",1)[1])
