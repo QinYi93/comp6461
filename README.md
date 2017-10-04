@@ -13,3 +13,8 @@
 # Reference
 * HTTP 1.0 Protocol
 [HTTP 1.0](https://www.w3.org/Protocols/HTTP/1.0/spec.html)
+
+
+# Requirements
+* Python 3.5.1
+* IDE: PyCharm
