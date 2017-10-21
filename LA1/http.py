@@ -1,12 +1,13 @@
 import socket
 import sys
-from urlparse import urlparse
+from urllib.parse import urlparse
 # from urllib.parse import urlencode
 class http:
     counting = 0
 
-    def __init__(self, url):
+    def __init__(self, url, port=80):
         self.url = urlparse(url)
+        self.port = port
         self.host = self.url.netloc
         self.path = self.url.path
         if self.path == "":
@@ -27,7 +28,7 @@ class http:
         line1 = headArray.pop(0).split()
         # if line1[1] == '200':
         self.state = line1[1]
-        print "\n====>Status:"+" ".join(line1[2:]) + "  Code:" + line1[1]
+        print("\n====>Status:"+" ".join(line1[2:]) + "  Code:" + line1[1])
         self.headMap = {}
         for key in headArray:
             keyValue = key.split(":")
@@ -38,7 +39,7 @@ class http:
             # print(r_url)
             if r_url.netloc:
                 self.host = r_url.netloc
-                self.header = {"Host":self.host}
+                self.header["Host"] = self.host
             self.path = r_url.path
             if r_url.path:
                 self.path = r_url.path
@@ -51,10 +52,10 @@ class http:
         self.counting = self.counting+1
         conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
-            conn.connect((self.host, 80))
-            # print(self.content)
+            conn.connect((self.host, self.port))
+            print(self.content)
             conn.sendall(self.content.encode("utf-8"))
-            response = conn.recv(1024, socket.MSG_WAITALL)
+            response = conn.recv(2048, socket.MSG_WAITALL)
             # print(response)
             reply = response.decode("utf-8")
             return self.status(reply)

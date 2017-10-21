@@ -1,6 +1,6 @@
 import unittest
 
-from LA1.http import http
+from http import http
 
 
 class TestHTTPMethods(unittest.TestCase):

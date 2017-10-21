@@ -7,13 +7,12 @@
 #   Test Case
 #   python httptest.py -v
 import argparse
-import json
 
-from LA1.http import http
+from http import http
 
 
 def create_http():
-    h = http(args.URL)
+    h = http(args.URL, args.port)
     h.setType(args.which)
     if args.verbose:
         h.setVerbosity(True)
@@ -28,7 +27,8 @@ def create_http():
     body = ""
     if args.which == "post":
        if args.data:
-            body = json.dumps(args.data)
+            body = args.data
+            print(body)
             h.setData(body)
             if "Content-Type" not in h.header.keys():
                 h.addHeader("Content-Type", "application/json")#"\r\n" + "Content-Type: application/json")
@@ -52,15 +52,17 @@ get_parser = subparsers.add_parser('get', help='executes a HTTP GET request and 
 get_parser.add_argument("-v", action='store_true', dest="verbose", default=False, help="Prints the detail of the response such as protocol, status, and headers.")
 get_parser.add_argument("-head", action="append", dest="headers", default=[], help="Associates headers to HTTP Request with the format 'key:value'.")
 get_parser.add_argument("-o", action="store", dest="output" , default = "", help = "Output the body to a file", required = False)
+get_parser.add_argument("-p", action="store", dest="port", help="Set server port", type=int, default=80)
 get_parser.set_defaults(which='get')
 
 post_parser = subparsers.add_parser('post', help='executes a HTTP POST request and prints the response.')
 post_parser.add_argument("-v", action='store_true', dest="verbose", default=False, help="Prints the detail of the response such as protocol, status, and headers.")
 post_parser.add_argument("-head", action="append", dest="headers", default=[], help="Associates headers to HTTP Request with the format 'key:value'.")
 group = post_parser.add_mutually_exclusive_group(required=False)
-group.add_argument("-d", action="store", dest="data", type=json.loads, default='{}', help="Associates an inline data to the body HTTP POST request.")
+group.add_argument("-d", action="store", dest="data", help="Associates an inline data to the body HTTP POST request.")
 group.add_argument("-f", action="store", dest="file", default="", help="Associates the content of a file to the body HTTP POST request.")
 post_parser.add_argument("-o", action="store", dest="output" , default = "", help = "Output the body to a file", required = False)
+post_parser.add_argument("-p", action="store", dest="port", help="Set server port", type=int, default=80)
 post_parser.set_defaults(which='post')
 
 # help_parser = subparsers.add_parser('help', help='prints this screen.')
