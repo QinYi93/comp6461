@@ -4,7 +4,7 @@ import argparse
 import os
 import json
 import pathlib
-
+from lockfile import LockFile
 from http import http
 
 def run_server(host, port, dir):
@@ -65,8 +65,12 @@ def handle_client(conn, addr, dir):
                         if args.debugging:
                             print("POST File", path)
                         pathlib.Path(os.path.dirname(path)).mkdir(parents=True, exist_ok=True)
-                        with open(path, '+w') as f:
-                            f.write(body)
+                        lock = LockFile(path)
+                        lock.acquire()
+                        print(os.path.basename(path), " Content", body)
+                        with open(path, 'a+') as f:
+                            f.write(body+"\n")
+                        lock.release()
                         r = http(200, "")
                     except OSError as e:
                         if args.debugging:

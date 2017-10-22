@@ -5,10 +5,11 @@
 #   python httpc.py post -v -head Content-Type:application/json -f 'file.json' -o 'output.txt' 'http://httpbin.org/post'
 #   python httpc.py get -v 'http://httpbin.org/redirect/5'
 #   Test Case
-#   python httptest.py -v
+#   python httpfstest.py -v
 import argparse
-
-from http import http
+import sys
+sys.path.extend(["../"])
+from LA1.http import http
 
 
 def create_http():
