@@ -6,6 +6,8 @@ import json
 import pathlib
 from lockfile import LockFile
 from http import http
+import filetype
+import magic
 
 def run_server(host, port, dir):
     listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -39,27 +41,42 @@ def handle_client(conn, addr, dir):
             else:
                 if not dir.endswith("/"):
                     dir = dir + "/"
-                if not dir.startswith("./"):
-                    dir = "./" + dir
+                # if not dir.startswith("./"):
+                #     dir = "./" + dir
                 path = (dir + path).replace("//", "/")
                 # print(path)
                 if method == "GET":
-                    if path.endswith("/"):
-                        if args.debugging:
-                            print("GET Directory", path)
-                        files = os.listdir(path)
-                        # print(files)
-                        r = http(200, json.dumps(files))
-                        r.addHeader("Content-Type", "application/json")
-                    else:
-                        if args.debugging:
-                            print("GET File", path)
-                        if os.path.exists(path):
-                            with open(path, 'r') as f:
-                                content = f.read()
-                            r = http(200, content)
+                    try:
+                        if path.endswith("/"):
+                            if args.debugging:
+                                print("GET Directory", path)
+                            files = os.listdir(path)
+                            # print(files)
+                            r = http(200, json.dumps(files))
+                            r.addHeader("Content-Type", "application/json")
                         else:
-                            r = http(404, "")
+                            if os.path.exists(path):
+                                if args.debugging:
+                                    print("FIND File", path)
+                                with open(path, 'r') as f:
+                                    content = f.read()
+                                r = http(200, content)
+                                kind = filetype.guess(path)
+                                if kind is None:
+                                    kind = magic.from_file(path, mime=True)
+                                    r.addHeader("Content-Type", kind)
+                                else:
+                                    r.addHeader("Content-Type", kind.mime)
+                                if "Content-disposition" in headers:
+                                    r.addHeader("Content-disposition", headers["Content-disposition"])
+                                else:
+                                    r.addHeader("Content-disposition", "attachment")
+                            else:
+                                r = http(404, "")
+                    except OSError as e:
+                        if args.debugging:
+                            print(e)
+                        r = http(400, e.strerror)
                 elif method == "POST":
                     try:
                         if args.debugging:
