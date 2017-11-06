@@ -6,7 +6,6 @@ import json
 import pathlib
 from lockfile import LockFile
 from http import http
-import filetype
 import magic
 
 def run_server(host, port, dir):
@@ -31,7 +30,7 @@ def handle_client(conn, addr, dir):
             data = data.decode("utf-8")
             if not data:
                 break
-            (method, path, body, headers) = parseRequest(data)
+            (method, path, query, body, headers) = parseRequest(data)
             if args.debugging:
                 print(method, path, body, headers)
             if ".." in path:
@@ -58,17 +57,23 @@ def handle_client(conn, addr, dir):
                             if os.path.exists(path):
                                 if args.debugging:
                                     print("FIND File", path)
-                                with open(path, 'r') as f:
-                                    content = f.read()
-                                r = http(200, content)
-                                kind = filetype.guess(path)
-                                if kind is None:
-                                    kind = magic.from_file(path, mime=True)
-                                    r.addHeader("Content-Type", kind)
+                                r = http(200, "")
+
+                                kind = magic.from_file(path, mime=True)
+                                r.addHeader("Content-Type", kind)
+                                if "text" in kind:
+                                    with open(path, 'r') as f:
+                                        content = f.read()
+                                        r.setContent(content.encode("ascii"))
                                 else:
-                                    r.addHeader("Content-Type", kind.mime)
+                                    with open(path, 'rb') as f:
+                                        content = f.read()
+                                        r.setContent(content)
+
                                 if "Content-disposition" in headers:
                                     r.addHeader("Content-disposition", headers["Content-disposition"])
+                                elif "inline" in query:
+                                    r.addHeader("Content-disposition", "inline")
                                 else:
                                     r.addHeader("Content-disposition", "attachment")
                             else:
@@ -96,8 +101,9 @@ def handle_client(conn, addr, dir):
                 else:
                     r = http(400, "")
             if args.debugging:
-                print(r.toString())
-            conn.sendall(r.toString().encode('ascii'))
+                print(r.headToString())
+            conn.sendall(r.headToString().encode("ascii"))
+            conn.sendall(r.getBody())
             break
 
     finally:
@@ -110,6 +116,10 @@ def parseRequest(data):
     # if line1[1] == '200':
     method = line1[0]
     path = line1[1]
+    query = ""
+    if "?" in path:
+        path, query = path.split("?")
+
     protocol = line1[2]
     # print("\n====>Status:" + " ".join(line1[2:]) + "  Code:" + line1[1])
     headMap = {}
@@ -117,7 +127,7 @@ def parseRequest(data):
         keyValue = key.split(":")
         headMap[keyValue[0]] = keyValue[1].strip()
 
-    return method, path, body, headMap
+    return method, path, query, body, headMap
 
 parser = argparse.ArgumentParser(description='Socket based HTTP fileserver')
 parser.add_argument("-p", action="store", dest="port", help="Set server port", type=int, default=8080)

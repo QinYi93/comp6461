@@ -9,6 +9,7 @@
 import argparse
 import sys
 sys.path.extend(["../"])
+sys.path.extend(["."])
 from LA1.http import http
 
 

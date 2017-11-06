@@ -5,7 +5,6 @@ class http:
         self.status = status
         self.content = content
         self.header = {}
-        self.header["Content-Length"] = str(len(content))
 
     def addHeader(self, key, value):
         self.header[key] = value
@@ -35,9 +34,13 @@ class http:
 
     def setContent(self, content):
         self.content = content
+        self.header["Content-Length"] = str(len(content))
 
-    def toString(self):
+    def getBody(self):
+        return self.content
+
+    def headToString(self):
     # construct response message
-        return "HTTP/1.0 " + str(self.getStatus()) + " " + self.getState() + self.getHeader() + "\r\n" + self.content
+        return "HTTP/1.0 " + str(self.getStatus()) + " " + self.getState() + self.getHeader() + "\r\n"
 
 
