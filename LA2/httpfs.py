@@ -51,7 +51,7 @@ def handle_client(conn, addr, dir):
                                 print("GET Directory", path)
                             files = os.listdir(path)
                             # print(files)
-                            r = http(200, json.dumps(files))
+                            r = http(200, json.dumps(files).encode("ascii"))
                             r.addHeader("Content-Type", "application/json")
                         else:
                             if os.path.exists(path):
@@ -93,7 +93,7 @@ def handle_client(conn, addr, dir):
                         with open(path, 'a+') as f:
                             f.write(body+"\n")
                         lock.release()
-                        r = http(200, "")
+                        r = http(200, "".encode("ascii"))
                     except OSError as e:
                         if args.debugging:
                             print(e)
