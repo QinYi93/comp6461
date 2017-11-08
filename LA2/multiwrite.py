@@ -1,5 +1,6 @@
 import sys
 sys.path.extend(["../"])
+sys.path.extend(["."])
 from threading import Thread
 
 from LA1.http import http
@@ -15,7 +16,7 @@ def test_post_request_multi(file, index):
     h.constructContent()
     reply = h.send()
 
-for i in range(1, 100):
+for i in range(1, 10):
     Thread(target=test_post_request_multi, args=("bar", i)).start()
     # Thread(target=test_post_request_multi, args=("bar1", i)).start()
     # Thread(target=test_post_request_multi, args=("bar2", i)).start()

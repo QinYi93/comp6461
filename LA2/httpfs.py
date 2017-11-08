@@ -36,7 +36,7 @@ def handle_client(conn, addr, dir):
             if ".." in path:
                 if args.debugging:
                     print("Access Denied", path)
-                r = http(400, "Access Denied")
+                r = http(400, "Access Denied".encode("ascii"))
             else:
                 if not dir.endswith("/"):
                     dir = dir + "/"
@@ -77,7 +77,7 @@ def handle_client(conn, addr, dir):
                                 else:
                                     r.addHeader("Content-disposition", "attachment")
                             else:
-                                r = http(404, "")
+                                r = http(404, "".encode("ascii"))
                     except OSError as e:
                         if args.debugging:
                             print(e)
@@ -119,6 +119,8 @@ def parseRequest(data):
     query = ""
     if "?" in path:
         path, query = path.split("?")
+    elif "&" in path:
+        path, query = path.split("&")
 
     protocol = line1[2]
     # print("\n====>Status:" + " ".join(line1[2:]) + "  Code:" + line1[1])
