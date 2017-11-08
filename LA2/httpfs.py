@@ -12,7 +12,7 @@ def run_server(host, port, dir):
     listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         listener.bind((host, port))
-        listener.listen(5)
+        listener.listen(10)
         if args.debugging:
             print('Echo server is listening at', port)
         while True:

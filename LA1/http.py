@@ -60,7 +60,7 @@ class http:
             reply = response.decode("utf-8")
             return self.status(reply)
         except OSError as e:
-            print("")
+            print(e)
         finally:
             conn.close()
 
