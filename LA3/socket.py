@@ -9,10 +9,12 @@ class TestSocketMethods(unittest.TestCase):
     def test_send(self):
         return
 
-class singleton():
-
-    def singleton(self):
-        return
+class Singleton(object):
+    _instance = None
+    def __new__(class_, *args, **kwargs):
+        if not isinstance(class_._instance, class_):
+            class_._instance = object.__new__(class_, *args, **kwargs)
+        return class_._instance
 
 class socket(_socket.socket):
     def __init__(self):

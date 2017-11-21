@@ -8,6 +8,7 @@ from lockfile import LockFile
 from http import http
 import magic
 
+
 def run_server(host, port, dir):
     listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
@@ -21,18 +22,21 @@ def run_server(host, port, dir):
     finally:
         listener.close()
 
+
 def handle_client(conn, addr, dir):
     if args.debugging:
         print('Handle New client from', addr)
     try:
         while True:
             data = conn.recv(2048)
+            #解码：把二进制转换成字符串？
             data = data.decode("utf-8")
             if not data:
                 break
             (method, path, query, body, headers) = parseRequest(data)
             if args.debugging:
                 print(method, path, body, headers)
+                #不能进入上级目录
             if ".." in path:
                 if args.debugging:
                     print("Access Denied", path)
@@ -51,6 +55,7 @@ def handle_client(conn, addr, dir):
                                 print("GET Directory", path)
                             files = os.listdir(path)
                             # print(files)
+                            # python 转成json
                             r = http(200, json.dumps(files).encode("ascii"))
                             r.addHeader("Content-Type", "application/json")
                         else:
@@ -58,7 +63,7 @@ def handle_client(conn, addr, dir):
                                 if args.debugging:
                                     print("FIND File", path)
                                 r = http(200, "")
-
+                                #找到文件的类型
                                 kind = magic.from_file(path, mime=True)
                                 r.addHeader("Content-Type", kind)
                                 if "text" in kind:
@@ -91,7 +96,7 @@ def handle_client(conn, addr, dir):
                         lock.acquire()
                         print(os.path.basename(path), " Content", body)
                         with open(path, 'a+') as f:
-                            f.write(body+"\n")
+                            f.write(body + "\n")
                         lock.release()
                         r = http(200, "".encode("ascii"))
                     except OSError as e:
@@ -109,6 +114,7 @@ def handle_client(conn, addr, dir):
     finally:
         conn.close()
 
+
 def parseRequest(data):
     (head, body) = data.split("\r\n\r\n")
     headArray = head.split("\r\n")
@@ -122,7 +128,7 @@ def parseRequest(data):
     elif "&" in path:
         path, query = path.split("&")
 
-    protocol = line1[2]
+        # protocol = line1[2]
     # print("\n====>Status:" + " ".join(line1[2:]) + "  Code:" + line1[1])
     headMap = {}
     for key in headArray:
@@ -130,6 +136,7 @@ def parseRequest(data):
         headMap[keyValue[0]] = keyValue[1].strip()
 
     return method, path, query, body, headMap
+
 
 parser = argparse.ArgumentParser(description='Socket based HTTP fileserver')
 parser.add_argument("-p", action="store", dest="port", help="Set server port", type=int, default=8080)

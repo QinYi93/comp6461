@@ -4,7 +4,7 @@ class http:
     def __init__(self, status, content):
         self.status = status
         self.content = content
-        self.header = {}
+        self.header = {} #map
 
     def addHeader(self, key, value):
         self.header[key] = value
@@ -13,7 +13,7 @@ class http:
         head = "\r\n"
         # print(self.header)
         for k, v in self.header.items():
-            head+=(k+": "+v+"\r\n")
+            head += (k+": "+v+"\r\n")
         return head
 
     def setStatus(self, status):

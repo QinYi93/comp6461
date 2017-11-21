@@ -19,7 +19,9 @@
 
 #   Test Case
 *   python LA2/httpfstest.py
-*   python LA2/multitest.py
+*   python LA2/multiwrite.py
+*   python LA2/multiread.py
+*   python LA2/readwrite.py
 
 # Reference
 * HTTP 1.0 Protocol
