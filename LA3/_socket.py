@@ -12,20 +12,20 @@ def setdefaulttimeout(timeout): # real signature unknown; restored from __doc__
 
 class coding():
     # str is utf8, 1 utf8 character = 3 byte
-    def str2bigByte(self):
-        return self.encode("utf-8")
+    def str2bigByte(self, str):
+        return str.encode("utf-8")
     # str is utf8, 1 utf8 character = 3 byte
-    def bigByte2str(self):
-        return self.decode("utf-8")
+    def bigByte2str(self, byte):
+        return byte.decode("utf-8")
     # for sequence #
-    def intTo4bigByte(self):
-        return self.seq_num.to_bytes(4, byteorder='big')
+    def intTo4bigByte(self, seq_num):
+        return seq_num.to_bytes(4, byteorder='big')
     # for port
-    def intTo2bigByte(self):
-        return self.port.to_bytes(2, byteorder='big')
+    def intTo2bigByte(self, port):
+        return port.to_bytes(2, byteorder='big')
     # for each part of ip
-    def intTo1bigByte(self):
-        return self.ip.to_bytes(1, byteorder='big')
+    def intTo1bigByte(self, ip):
+        return ip.to_bytes(1, byteorder='big')
 class SocketType(object):
     def bind(self, address):  # real signature unknown; restored from __doc__
         """
