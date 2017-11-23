@@ -125,8 +125,8 @@ class rsocket():#__socket.socket):
             t = Timer(1, out, [timeout])
             # t.start()
             print(window)
+            print("receive from remote")
             while not timeout[0]:
-                print("receive NAK/ACK")
                 try:
                     data, route = self.conn.recvfrom(1024)  # buffer size is 1024 bytes
                     p = packet.Packet.from_bytes(data)
@@ -150,11 +150,12 @@ class rsocket():#__socket.socket):
                                 raise Exception("sequence number wrong!")
                             window[window_index] = -int(packet.grow_sequence(p.seq_num, WINDOW))
                     elif p.packet_type == packet.NAK:
+                        print("recv NAK, SE:", p.seq_num)
                         if p.seq_num in mapping.keys():
                             window_index = mapping.pop(p.seq_num)
                             if not window[window_index] - p.seq_num == 0:
                                 raise Exception("sequence number wrong!")
-                            window[window_index] = -p.seq_num
+                            window[window_index] = -int(p.seq_num)
                     else:
                         print("UFO")
                 except socket.timeout:
@@ -162,15 +163,23 @@ class rsocket():#__socket.socket):
             print(window)
             print("compare_window")
             print(compare_window)
+            new_window = window.copy()
+            index = WINDOW
             for i in range(0, len(window)):
-                if window[i] + compare_window[i] == 0:
+                if window[i] + compare_window[i] == 0 or window[i] == compare_window[i]:
                     index = i
                     break
+                else:
+                    new_window.append(new_window.pop(0))
             print(index)
             print(len(package))
             if not index == 0:
                 package = package[index:]
             print(len(package))
+            # move window
+            print(new_window)
+            window = new_window
+            index = 0
                 # assert ()
             if index+1 == WINDOW:
                 index = (index + 1) % WINDOW
@@ -265,6 +274,7 @@ def run_client(router_addr, router_port, server_addr, server_port):
         """
     conn = rsocket((router_addr, router_port), 4294967295-8)
     conn.connect((server_addr, server_port))
+    conn.sendall(content)
     conn.sendall(content)
 
     se = uint32(4294967295)
