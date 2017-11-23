@@ -4,6 +4,7 @@ import sys
 import socket
 import time
 import math
+import logging
 from numpy import uint32
 import numpy as np
 from threading import Timer
@@ -19,6 +20,24 @@ import packet
 # sys.path.extend(["../"])
 
 WINDOW = 1
+FRAME_SIZE = 1024
+RECV_TIME_OUT = 2
+HANDSHAKE_TIME_OUT = 5
+SLIDE_TIME = 0.1
+
+log = logging.getLogger('ARQ')
+
+fh = logging.FileHandler('debug.log')
+fh.setLevel(logging.DEBUG)
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+formatter = logging.Formatter('[%(levelname)s] >> %(message)s << %(funcName)s() %(asctime)s')
+fh.setFormatter(formatter)
+ch.setFormatter(formatter)
+log.setLevel(logging.DEBUG)
+log.addHandler(fh)
+log.addHandler(ch)
+
 
 class TestSocketMethods(unittest.TestCase):
     def test_send(self):
@@ -45,17 +64,17 @@ class rsocket():#__socket.socket):
 
     def handshaking(self, address, sequence):
         peer_ip = ipaddress.ip_address(socket.gethostbyname(address[0]))
-        print(peer_ip)
+        log.debug(peer_ip)
         try:
             conn = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             conn.connect(self.router)
             conn.sendall(packet.control_package(packet.SYN, peer_ip, address[1], sequence).to_bytes())
-            conn.settimeout(5)
-            data, route = conn.recvfrom(1024)
+            conn.settimeout(HANDSHAKE_TIME_OUT)
+            data, route = conn.recvfrom(FRAME_SIZE)
             p = packet.Packet.from_bytes(data)
-            print("Router: ", route)
-            print("Packet: ", p)
-            print("Payload: ", p.payload.decode("utf-8"))
+            log.debug("Router:{}".format(route))
+            log.debug("Packet:{}".format(p))
+            log.debug("Payload:{}".format(p.payload.decode("utf-8")))
 
             # conn.sendto(control_package(packet.ACK, p.peer_ip_addr, p.peer_port, sequence), self.router)
 
@@ -63,7 +82,7 @@ class rsocket():#__socket.socket):
             return conn, (p.peer_ip_addr, p.peer_port)
 
         except Exception as e:
-            print(e)
+            log.error(e)
             raise HandShakeException("Hand Shaking " + e.__str__())
 
     def connect(self, address):
@@ -72,66 +91,71 @@ class rsocket():#__socket.socket):
             self.conn, self.remote = self.handshaking(address, self.sequence)
             self.sequence = packet.grow_sequence(self.sequence, 1)
         except HandShakeException as e:
-            print(e)
+            log.error(e)
             raise e
 
+    def findIndex(self, window, se):
+        for i in range(0, len(window)):
+            if window[i] == se:
+                return i
 
     def sendall(self, data):
         index = 0
-        print(self.sequence)
-        # window = np.array([-i for i in range(1, 11)], dtype='int64')
+        timer = None
+        # mapping = {}
+        log.debug("init sequence#:{}".format(self.sequence))
         window = [-i for i in range(1, WINDOW+1)]
-        print(window)
         for i in range(0, WINDOW):
             window[i] = -int(packet.grow_sequence(self.sequence, i))
-        # window = list()
-        # window.extend([-i for i in range(self.sequence, self.sequence+WINDOW)])
-        print(window)
-        # assert()
         package, self.sequence = packet.data_package(self.remote[0], self.remote[1], data, self.sequence)
         # for pack in package:
         #     self.conn.sendall(pack.to_bytes())
-        mapping = {}
-        compare_window = window.copy()
+        # compare_window = window.copy()
+        timeout = [False, False]
+        log.debug("init widow:{}".format(window))
         while len(package) != 0:
-            print("package length:", len(package))
-            timeout = [False]
+            log.debug("plus stop package, {} package waiting for send:".format(len(package)))
             #send new package
             for i in range(0, len(window)):
-                if window[i] < 0:
+                if window[i] < 0: # new window slot
                     if (i - index + WINDOW) % WINDOW < len(package):
                         p = package[(i - index + WINDOW) % WINDOW]
                         # if not window[i] + p.seq_num == 0:
                         #     print(window, p.seq_num)
                         #     print(compare_window)
                         #     raise Exception("sequence number wrong!")
+                        log.debug("send {} slot, slot value is {}, package #{}".format(i, window[i], p.seq_num))
                         if window[i] + p.seq_num == 0:
                             window[i] = -window[i]
-                            mapping[window[i]] = i
+                            # mapping[window[i]] = i
                             self.conn.sendall(p.to_bytes())
-                            # if i <= index:
-                            #     self.conn.sendall(package[WINDOW-1-index+i].to_bytes())
-                            # else:
-                            #     self.conn.sendall(package[i-1-index].to_bytes())
-                            print("send package:{}".format(p))
+                            log.debug("sending new package:{}".format(p))
+                        else:
+                            log.debug("skip slot {} belongs to future".format(i))
             compare_window = window.copy()
-
+            # self.conn.settimeout(RECV_TIME_OUT)
             def out(timeout):
-                print("receive time out")
-                print(timeout)
+                log.debug("receive time out")
+                # print(timeout)
                 timeout[0] = True
-                print(timeout)
+                timeout[1] = False
+                # print(timeout)
 
-            t = Timer(1, out, [timeout])
-            # t.start()
-            print(window)
-            print("receive from remote")
-            while not timeout[0]:
+            if not timeout[1]:
+                timer = Timer(RECV_TIME_OUT, out, [timeout])
+                timer.start()
+                timeout[1] = True
+            log.debug("\nafter send, widow:{}".format(window))
+            log.debug("receive from remote")
+            while True:
+                self.conn.settimeout(SLIDE_TIME)
+                # compare_window = window.copy()
                 try:
                     data, route = self.conn.recvfrom(1024)  # buffer size is 1024 bytes
                     p = packet.Packet.from_bytes(data)
-                    print("Recv:{}".format(p))
+                    log.debug("Recv:{}".format(p))
                     if p.packet_type == packet.DATA:
+                        log.debug("cache data package")
                         self.data.append(p)
                     elif p.packet_type == packet.ACK:
                         # o_se = window[index]
@@ -144,52 +168,45 @@ class rsocket():#__socket.socket):
                         # print(window_index)
                         # window_index = (window_index+index) % WINDOW
                         # print(window_index)
-                        if p.seq_num in mapping.keys():
-                            window_index = mapping.pop(p.seq_num)
+                        if p.seq_num in window:#mapping.keys():
+                            window_index = self.findIndex(window, p.seq_num)#mapping.pop(p.seq_num)
+                            log.debug("recv ACK {} for lot {}".format(p.seq_num, window_index))
                             if not window[window_index] - p.seq_num == 0:
-                                raise Exception("sequence number wrong!")
+                                raise Exception("sequence number wrong! slot {} expert {}, but got {}".format(window_index, window[window_index], p.seq_num))
+                            log.debug("old window:{}".format(window))
                             window[window_index] = -int(packet.grow_sequence(p.seq_num, WINDOW))
+                            log.debug("new window:{}".format(window))
+                        else:
+                            log.debug("recv ACK {} but not belongs any window slot, drop!".format(p.seq_num))
                     elif p.packet_type == packet.NAK:
-                        print("recv NAK, SE:", p.seq_num)
-                        if p.seq_num in mapping.keys():
-                            window_index = mapping.pop(p.seq_num)
+                        if p.seq_num in window:#mapping.keys():
+                            window_index = self.findIndex(window, p.seq_num)#mapping.pop(p.seq_num)
+                            log.debug("recv NAK {} for lot {}".format(p.seq_num, window_index))
                             if not window[window_index] - p.seq_num == 0:
-                                raise Exception("sequence number wrong!")
+                                raise Exception(
+                                    "sequence number wrong! slot {} expert {}, but got {}".format(window_index,
+                                                                                                  window[window_index],
+                                                                                                  p.seq_num))
+                            log.debug("old window:{}".format(window))
                             window[window_index] = -int(p.seq_num)
+                            log.debug("new window:{}".format(window))
+                        else:
+                            log.debug("recv NAK {} but not belongs any window slot, drop!".format(p.seq_num))
                     else:
                         print("UFO")
                 except socket.timeout:
-                    timeout[0] = True
-            print(window)
-            print("compare_window")
-            print(compare_window)
-            new_window = window.copy()
-            index = WINDOW
-            for i in range(0, len(window)):
-                if window[i] + compare_window[i] == 0 or window[i] == compare_window[i]:
-                    index = i
+                    log.debug("slide window")
                     break
-                else:
-                    new_window.append(new_window.pop(0))
-            print(index)
-            print(len(package))
-            if not index == 0:
-                package = package[index:]
-            print(len(package))
-            # move window
-            print(new_window)
-            window = new_window
-            index = 0
-                # assert ()
-            if index+1 == WINDOW:
-                index = (index + 1) % WINDOW
-            # if index == WINDOW -1:
-            #     index = -1
+
+            index, package, window = self.slide_window(compare_window, package, window)
+            if not timeout[0]:
+                continue
             if(len(package) != 0):
                 for i in range(0, len(window)):
                     if window[i] > 0:
                         if (i - index + WINDOW) % WINDOW < len(package):
                             p = package[(i - index + WINDOW) % WINDOW]
+                            log.debug("resend {} slot, slot value is {}, package #{}".format(i, window[i], p.seq_num))
                             # if not window[i] == p.seq_num:
                             #     print(window, p.seq_num)
                             #     raise Exception("sequence number wrong!")
@@ -197,8 +214,45 @@ class rsocket():#__socket.socket):
                             if window[i] == p.seq_num:
                                 p = package[(i - index + WINDOW) % WINDOW]
                                 self.conn.sendall(p.to_bytes())
-                                print("send package:{}".format(p))
-                print(window)
+                                log.debug("sending new package:{}".format(p))
+                            else:
+                                log.debug("skip slot {} belongs to future".format(i))
+                # print(window)
+            else:
+                log.debug("All the package send out!")
+
+        timer.cancel()
+    def slide_window(self, compare_window, package, window):
+        log.debug("\ncompare with original window")
+        log.debug("NEW:{}".format(window))
+        log.debug("ORI:{}".format(compare_window))
+        log.debug("start slide window")
+        new_window = window.copy()
+        index = WINDOW
+        for i in range(0, len(window)):
+            if window[i] + compare_window[i] == 0 or window[i] == compare_window[i]:
+                index = i
+                log.debug("find the most old slot {}".format(i))
+                break
+            else:
+                log.debug("slot {} send success, slide one".format(i))
+                new_window.append(new_window.pop(0))
+        # print(index)
+        log.debug("total package length:{}".format(len(package)))
+        if not index == 0:
+            package = package[index:]
+        log.debug("rest package length:{}".format(len(package)))
+        # move window
+        # print(new_window)
+        window = new_window
+        log.debug("new window:{}".format(window))
+        index = 0
+        # assert ()
+        if index + 1 == WINDOW:
+            index = (index + 1) % WINDOW
+        # if index == WINDOW -1:
+        #     index = -1
+        return index, package, window
 
     def bind(self, address):  # real signature unknown; restored from __doc__
         """
@@ -275,7 +329,7 @@ def run_client(router_addr, router_port, server_addr, server_port):
     conn = rsocket((router_addr, router_port), 4294967295-8)
     conn.connect((server_addr, server_port))
     conn.sendall(content)
-    conn.sendall(content)
+    # conn.sendall(content)
 
     se = uint32(4294967295)
     se = uint32(se) + uint32(1)
