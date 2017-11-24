@@ -1,23 +1,11 @@
 import unittest
-import argparse
-import sys
 import socket
-import time
-import math
 import logging
 from numpy import uint32
-import numpy as np
 from threading import Timer
 
 import ipaddress
-# sys.path.extend(["."])
-# from packet import *
 import packet
-
-# import __socket
-# from _socket import *
-
-# sys.path.extend(["../"])
 
 WINDOW = 10
 FRAME_SIZE = 1024
@@ -194,163 +182,6 @@ class rsocket():#__socket.socket):
             if not timeout[0]:
                 continue
         timer.cancel()
-
-
-
-    def sendall_bak(self, data):
-        index = 0
-        timer = None
-        # mapping = {}
-        log.debug("init send sequence#:{}".format(self.sequence))
-        window = [-i for i in range(1, WINDOW+1)]
-        for i in range(0, WINDOW):
-            window[i] = -int(packet.grow_sequence(self.sequence, i))
-        package, self.sequence = packet.data_package(self.remote[0], self.remote[1], data, self.sequence)
-        # for pack in package:
-        #     self.conn.sendall(pack.to_bytes())
-        # compare_window = window.copy()
-        timeout = [False, False]
-        log.debug("init widow:{}".format(window))
-        while len(package) != 0:
-            log.debug("plus stop package, {} package waiting for send:".format(len(package)))
-            #send new package
-            for i in range(0, len(window)):
-                if window[i] < 0: # new window slot
-                    if (i - index + WINDOW) % WINDOW < len(package):
-                        p = package[(i - index + WINDOW) % WINDOW]
-                        # if not window[i] + p.seq_num == 0:
-                        #     print(window, p.seq_num)
-                        #     print(compare_window)
-                        #     raise Exception("sequence number wrong!")
-                        log.debug("send {} slot, slot value is {}, package #{}".format(i, window[i], p.seq_num))
-                        if window[i] + p.seq_num == 0:
-                            window[i] = -window[i]
-                            # mapping[window[i]] = i
-                            self.conn.sendall(p.to_bytes())
-                            log.debug("sending new package:{}".format(p))
-                        else:
-                            log.debug("skip slot {} belongs to future".format(i))
-            compare_window = window.copy()
-            # self.conn.settimeout(RECV_TIME_OUT)
-            def out(timeout):
-                log.debug("receive time out")
-                # print(timeout)
-                timeout[0] = True
-                timeout[1] = False
-                # print(timeout)
-
-            if not timeout[1]:
-                timer = Timer(RECV_TIME_OUT, out, [timeout])
-                timer.start()
-                timeout[1] = True
-            log.debug("\nafter send, widow:{}".format(window))
-            log.debug("receive from remote")
-            while True:
-                self.conn.settimeout(SLIDE_TIME)
-                # compare_window = window.copy()
-                try:
-                    data, route = self.conn.recvfrom(1024)  # buffer size is 1024 bytes
-                    p = packet.Packet.from_bytes(data)
-                    log.debug("Recv:{}".format(p))
-                    if p.packet_type == packet.DATA:
-                        log.debug("cache data package")
-                        self.data.append(p)
-                    elif p.packet_type == packet.ACK:
-                        # o_se = window[index]
-                        # if index >= 0:
-                        #     o_se = window[index]
-                        # else:
-                        #     o_se = window[0]
-                        # print(o_se)
-                        # window_index = p.seq_num - o_se
-                        # print(window_index)
-                        # window_index = (window_index+index) % WINDOW
-                        # print(window_index)
-                        if p.seq_num in window:#mapping.keys():
-                            window_index = self.findIndex(window, p.seq_num)#mapping.pop(p.seq_num)
-                            log.debug("recv ACK {} for slot {}".format(p.seq_num, window_index))
-                            if not window[window_index] - p.seq_num == 0:
-                                raise Exception("sequence number wrong! slot {} expect {}, but got {}".format(window_index, window[window_index], p.seq_num))
-                            log.debug("old window:{}".format(window))
-                            window[window_index] = -int(packet.grow_sequence(p.seq_num, WINDOW))
-                            log.debug("new window:{}".format(window))
-                        else:
-                            log.debug("recv ACK {} but not belongs any window slot, drop!".format(p.seq_num))
-                    elif p.packet_type == packet.NAK:
-                        if p.seq_num in window:#mapping.keys():
-                            window_index = self.findIndex(window, p.seq_num)#mapping.pop(p.seq_num)
-                            log.debug("recv NAK {} for lot {}".format(p.seq_num, window_index))
-                            if not window[window_index] - p.seq_num == 0:
-                                raise Exception(
-                                    "sequence number wrong! slot {} expect {}, but got {}".format(window_index,
-                                                                                                  window[window_index],
-                                                                                                  p.seq_num))
-                            log.debug("old window:{}".format(window))
-                            window[window_index] = -int(p.seq_num)
-                            log.debug("new window:{}".format(window))
-                        else:
-                            log.debug("recv NAK {} but not belongs any window slot, drop!".format(p.seq_num))
-                    else:
-                        print("UFO")
-                except socket.timeout:
-                    log.debug("slide window")
-                    break
-
-            index, package, window = self.slide_window(compare_window, package, window)
-            if not timeout[0]:
-                continue
-            if(len(package) != 0):
-                for i in range(0, len(window)):
-                    if window[i] > 0:
-                        if (i - index + WINDOW) % WINDOW < len(package):
-                            p = package[(i - index + WINDOW) % WINDOW]
-                            log.debug("resend {} slot, slot value is {}, package #{}".format(i, window[i], p.seq_num))
-                            # if not window[i] == p.seq_num:
-                            #     print(window, p.seq_num)
-                            #     raise Exception("sequence number wrong!")
-                            # window[i] = -window[i]
-                            if window[i] == p.seq_num:
-                                p = package[(i - index + WINDOW) % WINDOW]
-                                self.conn.sendall(p.to_bytes())
-                                log.debug("sending new package:{}".format(p))
-                            else:
-                                log.debug("skip slot {} belongs to future".format(i))
-                # print(window)
-            else:
-                log.debug("All the package send out!")
-
-        timer.cancel()
-    def slide_window(self, compare_window, package, window):
-        log.debug("\ncompare with original window")
-        log.debug("NEW:{}".format(window))
-        log.debug("ORI:{}".format(compare_window))
-        log.debug("start slide window")
-        new_window = window.copy()
-        index = WINDOW
-        for i in range(0, len(window)):
-            if window[i] + compare_window[i] == 0 or window[i] == compare_window[i]:
-                index = i
-                log.debug("find the most old slot {}".format(i))
-                break
-            else:
-                log.debug("slot {} send success, slide one".format(i))
-                new_window.append(new_window.pop(0))
-        # print(index)
-        log.debug("total package length:{}".format(len(package)))
-        if not index == 0:
-            package = package[index:]
-        log.debug("rest package length:{}".format(len(package)))
-        # move window
-        # print(new_window)
-        window = new_window
-        log.debug("new window:{}".format(window))
-        index = 0
-        # assert ()
-        if index + 1 == WINDOW:
-            index = (index + 1) % WINDOW
-        # if index == WINDOW -1:
-        #     index = -1
-        return index, package, window
 
     def recv_data_package(self, packet):
         index = 0
