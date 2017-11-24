@@ -90,7 +90,11 @@ class rsocket():#__socket.socket):
                 return i
 
     def getwindowse(self, window):
-        return [i for i in window]
+        windowse = [i for i in window]
+        for i in range(0, len(windowse)):
+            if isinstance(windowse[i], packet.Packet):
+                windowse[i] = windowse[i].seq_num
+        return windowse
 
     def flushwindow(self, window):
         for i in range(0, len(window)):
@@ -262,6 +266,7 @@ class rsocket():#__socket.socket):
                         window.append(packet.grow_sequence(last, 1))
                     cache.extend(pop_packet.payload)
                 log.debug("send ACK#{}".format(recv_packet.seq_num))
+                log.debug("new window:{}".format(self.getwindowse(window)))
                 self.conn.sendall(packet.control_package(packet.ACK, self.remote[0], self.remote[1], recv_packet.seq_num).to_bytes())
                 # if len(cache) > 0:
                 #     return cache
