@@ -19,10 +19,10 @@ import packet
 
 # sys.path.extend(["../"])
 
-WINDOW = 1
+WINDOW = 10
 FRAME_SIZE = 1024
 RECV_TIME_OUT = 2
-HANDSHAKE_TIME_OUT = 5
+HANDSHAKE_TIME_OUT = 15
 SLIDE_TIME = 0.1
 
 log = logging.getLogger('ARQ')
@@ -58,19 +58,21 @@ class rsocket():#__socket.socket):
     def __init__(self, router=('localhost', 3000), sequence = 0):
         self.router = router
         self.sequence = uint32(sequence)
-        self.conn = None
+        self.conn = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.remote = None
-        self.data = None
+        self.data = list()
+        self.control = list()
+        self.client_list = list()
 
     def handshaking(self, address, sequence):
         peer_ip = ipaddress.ip_address(socket.gethostbyname(address[0]))
         log.debug(peer_ip)
         try:
-            conn = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            conn.connect(self.router)
-            conn.sendall(packet.control_package(packet.SYN, peer_ip, address[1], sequence).to_bytes())
-            conn.settimeout(HANDSHAKE_TIME_OUT)
-            data, route = conn.recvfrom(FRAME_SIZE)
+            # conn = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            self.conn.connect(self.router)
+            self.conn.sendall(packet.control_package(packet.SYN, peer_ip, address[1], sequence).to_bytes())
+            self.conn.settimeout(HANDSHAKE_TIME_OUT)
+            data, route = self.conn.recvfrom(FRAME_SIZE)
             p = packet.Packet.from_bytes(data)
             log.debug("Router:{}".format(route))
             log.debug("Packet:{}".format(p))
@@ -78,8 +80,8 @@ class rsocket():#__socket.socket):
 
             # conn.sendto(control_package(packet.ACK, p.peer_ip_addr, p.peer_port, sequence), self.router)
 
-            conn.sendall(packet.control_package(packet.ACK, p.peer_ip_addr, p.peer_port, sequence).to_bytes())
-            return conn, (p.peer_ip_addr, p.peer_port)
+            self.conn.sendall(packet.control_package(packet.ACK, p.peer_ip_addr, p.peer_port, sequence).to_bytes())
+            return (p.peer_ip_addr, p.peer_port)
 
         except Exception as e:
             log.error(e)
@@ -88,7 +90,7 @@ class rsocket():#__socket.socket):
     def connect(self, address):
 
         try:
-            self.conn, self.remote = self.handshaking(address, self.sequence)
+            self.remote = self.handshaking(address, self.sequence)
             self.sequence = packet.grow_sequence(self.sequence, 1)
         except HandShakeException as e:
             log.error(e)
@@ -103,7 +105,7 @@ class rsocket():#__socket.socket):
         index = 0
         timer = None
         # mapping = {}
-        log.debug("init sequence#:{}".format(self.sequence))
+        log.debug("init send sequence#:{}".format(self.sequence))
         window = [-i for i in range(1, WINDOW+1)]
         for i in range(0, WINDOW):
             window[i] = -int(packet.grow_sequence(self.sequence, i))
@@ -170,9 +172,9 @@ class rsocket():#__socket.socket):
                         # print(window_index)
                         if p.seq_num in window:#mapping.keys():
                             window_index = self.findIndex(window, p.seq_num)#mapping.pop(p.seq_num)
-                            log.debug("recv ACK {} for lot {}".format(p.seq_num, window_index))
+                            log.debug("recv ACK {} for slot {}".format(p.seq_num, window_index))
                             if not window[window_index] - p.seq_num == 0:
-                                raise Exception("sequence number wrong! slot {} expert {}, but got {}".format(window_index, window[window_index], p.seq_num))
+                                raise Exception("sequence number wrong! slot {} expect {}, but got {}".format(window_index, window[window_index], p.seq_num))
                             log.debug("old window:{}".format(window))
                             window[window_index] = -int(packet.grow_sequence(p.seq_num, WINDOW))
                             log.debug("new window:{}".format(window))
@@ -184,7 +186,7 @@ class rsocket():#__socket.socket):
                             log.debug("recv NAK {} for lot {}".format(p.seq_num, window_index))
                             if not window[window_index] - p.seq_num == 0:
                                 raise Exception(
-                                    "sequence number wrong! slot {} expert {}, but got {}".format(window_index,
+                                    "sequence number wrong! slot {} expect {}, but got {}".format(window_index,
                                                                                                   window[window_index],
                                                                                                   p.seq_num))
                             log.debug("old window:{}".format(window))
@@ -254,46 +256,136 @@ class rsocket():#__socket.socket):
         #     index = -1
         return index, package, window
 
-    def bind(self, address):  # real signature unknown; restored from __doc__
-        """
-        bind(address)
+    def recv_data_package(self, packet):
+        index = 0
+        timer = None
+        # mapping = {}
+        # log.debug("init recv sequence#:{}".format(self.sequence))
+        # window = [-i for i in range(1, WINDOW + 1)]
+        # for i in range(0, WINDOW):
+        #     window[i] = -int(packet.grow_sequence(self.sequence, i))
 
-        Bind the socket to a local address.  For IP sockets, the address is a
-        pair (host, port); the host must refer to the local host. For raw packet
-        sockets the address is a tuple (ifname, proto [,pkttype [,hatype]])
-        """
-        pass
+    def recv_control_package(self, packet):
+        self.control.append(packet)
 
-    def listen(self, backlog=None):  # real signature unknown; restored from __doc__
-        """
-        listen([backlog])
+    def recvall(self):#, buffersize):
+        index = 0
+        timer = None
+        # mapping = {}
+        cache = bytearray()
+        log.debug("init recv sequence#:{}".format(self.sequence))
+        window = [-i for i in range(1, WINDOW + 1)]
+        for i in range(0, WINDOW):
+            window[i] = int(packet.grow_sequence(self.sequence, i))
 
-        Enable a server to accept connections.  If backlog is specified, it must be
-        at least 0 (if it is lower, it is set to 0); it specifies the number of
-        unaccepted connections that the system will allow before refusing new
-        connections. If not specified, a default reasonable value is chosen.
-        """
-        pass
+        while True:
+            while (isinstance(window[0], packet.Packet)):
+                peek = window[0]
+                if len(peek.payload) == 0:
+                    log.debug("pop terminate packet, se#{}".format(peek.seq_num))
+                    self.sequence = packet.grow_sequence(p.seq_num, 1)
+                    return cache
+                p = window.pop(0)
+                self.sequence = packet.grow_sequence(p.seq_num, 1)
+                log.debug("pop first slot, se#{}".format(p.seq_num))
+                last = window[len(window) - 1]
+                if isinstance(last, packet.Packet):
+                    window.append(packet.grow_sequence(last.seq_num, 1))
+                else:
+                    window.append(packet.grow_sequence(last, 1))
+                cache.extend(p.payload)
+
+                # if len(cache) >= buffersize:
+                #     data = cache[:buffersize]
+                #     cache = cache[buffersize:]
+                #     return data
+            if len(cache) > 0:
+                return cache
+            data = self.conn.recv(FRAME_SIZE)
+            p = packet.Packet.from_bytes(data)
+            # print("Router: ", route)
+            log.debug("Packet: {}".format(p))
+            # print("Payload: ", p.payload.decode("utf-8"))
+
+            # print("received message:" + data.decode("utf-8") + " addr:"+str(addr))
+            if not (p.peer_ip_addr == self.remote[0] and p.peer_port == self.remote[1]):
+                log.debug("recv bad data from {}:{}".format(p.peer_ip_addr, p.peer_port))
+                continue
+            if not p.packet_type == packet.DATA:
+                log.debug("recv control packet, cache")
+                self.recv_control_package(p)
+            else:
+                if p.seq_num in window:
+                    window_index = self.findIndex(window, p.seq_num)
+                    window[window_index] = p
+                    log.debug("slot {} recv data se#{}".format(window_index, p.seq_num))
+                    self.conn.sendall(packet.control_package(packet.ACK, self.remote[0], self.remote[1], p.seq_num).to_bytes())
+
+                else:
+                    # if not possible to recv future expect se#
+                    log.debug("recv out of expect se#{}".format(p.seq_num))
+                    self.conn.sendall(packet.control_package(packet.ACK, self.remote[0], self.remote[1], p.seq_num).to_bytes())
+        # return self.conn.recv(buffersize)
+
+    def bind(self, address):
+        self.conn.bind(address)
+
+    def listen(self, max):
+        # self.conn.listen(max)
+        self.MAX = max
 
     def accept(self):
-        """accept() -> (socket object, address info)
+        try:
+            data, route = self.conn.recvfrom(1024)  # buffer size is 1024 bytes
 
-        Wait for an incoming connection.  Return a new socket
-        representing the connection, and the address of the client.
-        For IP sockets, the address info is a pair (hostaddr, port).
-        """
-        # fd, addr = self._accept()
-        # # If our type has the SOCK_NONBLOCK flag, we shouldn't pass it onto the
-        # # new socket. We do not currently allow passing SOCK_NONBLOCK to
-        # # accept4, so the returned socket is always blocking.
-        # type = self.type & ~globals().get("SOCK_NONBLOCK", 0)
-        # sock = socket(self.family, type, self.proto, fileno=fd)
-        # # Issue #7995: if no default timeout is set and the listening
-        # # socket had a (non-zero) timeout, force the new socket in blocking
-        # # mode to override platform-specific socket flags inheritance.
-        # if getdefaulttimeout() is None and self.gettimeout():
-        #     sock.setblocking(True)
-        return #sock, addr
+            p = packet.Packet.from_bytes(data)
+            print("Router: ", route)
+            print("Packet: ", p)
+            print("Payload: ", p.payload.decode("utf-8"))
+            if len(self.client_list) > self.MAX:
+                return None, None
+            if p.packet_type == packet.SYN:
+                return self.accept_client(p)
+        except socket.timeout as e:
+            log.error(e)
+            return None, None
+
+    def accept_client(self, p):
+        print("create a new thread")
+        # peer_ip = ipaddress.ip_address(socket.gethostbyname(addr[0]))
+        # sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock = rsocket()
+        sock.conn.sendto(packet.control_package(packet.SYN_ACK, p.peer_ip_addr, p.peer_port, p.seq_num).to_bytes(), self.router)
+        print("send SYN-ACK")
+        # sock.sendto("SYNACK".encode("ascii"), addr)
+        # sock.settimeout(15)
+        data = sock.conn.recv(1024)  # buffer size is 1024 bytes
+        p = packet.Packet.from_bytes(data)
+
+        recv_list = list()
+        if p.packet_type == packet.ACK:
+            sock.sequence = packet.grow_sequence(p.seq_num, 1)
+            sock.remote = (p.peer_ip_addr, p.peer_port)
+            sock.conn.connect(self.router)
+            print("receive ACK, sequence #:" + str(p.seq_num))
+            # print("Router: ", route)
+            print("Packet: ", p)
+            print("Payload: ", p.payload.decode("utf-8"))
+            return sock, (p.peer_ip_addr, p.peer_port)
+        return None, None
+            # while True:
+            #     data, route = sock.recvfrom(1024)  # buffer size is 1024 bytes
+            #     p = Packet.from_bytes(data)
+            #     print("Router: ", route)
+            #     print("Packet: ", p)
+            #     # print("Payload: ", p.payload.decode("utf-8"))
+            #     if p.seq_num % 5 == 0:
+            #         sock.sendto(packet.control_package(packet.ACK, peer_ip, peer_port, p.seq_num).to_bytes(), route)
+            #     else:
+            #         sock.sendto(packet.control_package(packet.ACK, peer_ip, peer_port, p.seq_num).to_bytes(), route)
+            #     recv_list.append(p)
+            #     if len(p.payload) == 0:
+            #         deliver_msg(recv_list)
 
     def close(self):  # real signature unknown; restored from __doc__
         """
@@ -302,6 +394,8 @@ class rsocket():#__socket.socket):
         Close the socket.  It cannot be used after this call.
         """
         self.conn.close()
+        for c in self.client_list:
+            c.close()
 
     def packageContent(self, type, sequence, ip, port, content):
         #  1        4       4     2        1013
@@ -318,43 +412,6 @@ class handshake():
 
     def nak_package(self):
         return "NAK".encode("ascii")
-
-def run_client(router_addr, router_port, server_addr, server_port):
-    content = """accept() -> (socket object, address info)
-        我爱北京天安门，天安门上太阳升
-        Wait for an incoming connection.  Return a new socket
-        representing the connection, and the address of the client.
-        For IP sockets, the address info is a pair (hostaddr, port)
-        """
-    conn = rsocket((router_addr, router_port), 4294967295-8)
-    conn.connect((server_addr, server_port))
-    conn.sendall(content)
-    # conn.sendall(content)
-
-    se = uint32(4294967295)
-    se = uint32(se) + uint32(1)
-    print(se)
-
-
-# Usage:
-# python echoclient.py --routerhost localhost --routerport 3000 --serverhost localhost --serverport 8007
-
-parser = argparse.ArgumentParser()
-parser.add_argument("--routerhost", help="router host", default="localhost")
-parser.add_argument("--routerport", help="router port", type=int, default=3000)
-
-parser.add_argument("--serverhost", help="server host", default="localhost")
-parser.add_argument("--serverport", help="server port", type=int, default=8007)
-
-parser.add_argument("--windowsize", help="window size", type=int, default=10)
-args = parser.parse_args()
-
-if args.windowsize > math.pow(2, 31):
-    raise Exception("window size too large")
-WINDOW = args.windowsize
-
-run_client(args.routerhost, args.routerport, args.serverhost, args.serverport)
-
 
 if __name__ == '__main__':
     unittest.main()
