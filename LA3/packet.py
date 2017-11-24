@@ -67,6 +67,7 @@ class Packet:
         self.peer_ip_addr = peer_ip_addr
         self.peer_port = int(peer_port)
         self.payload = payload
+        self.send = False
 
     def to_bytes(self):
         """

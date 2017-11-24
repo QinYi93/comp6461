@@ -81,12 +81,14 @@ def handle_real_client_bak(conn, addr):
 def handle_real_client(conn, addr):
     print("create a new thread")
     recvlist = bytearray()
-    while True:
-        data = conn.recvall()
-        if len(data) == 0:
-            break
-        else:
-            recvlist.extend(data)
+    data = conn.recvall()
+    recvlist.extend(data)
+    # while True:
+    #     data = conn.recvall()
+    #     if len(data) == 0:
+    #         break
+    #     else:
+    #         recvlist.extend(data)
     print(recvlist.decode("utf-8"))
 
 def run_real_server(host, port):
