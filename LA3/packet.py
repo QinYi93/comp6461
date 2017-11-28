@@ -9,7 +9,12 @@ ACK = 1
 SYN = 2
 SYN_ACK = 3
 NAK = 4
+BYE = 8
 
+
+#  1        4       4     2        1013
+# ------------------------------------------
+# type | sequence | ip | port | sub-content
 def control_package(type, peer_ip, peer_port, sequence=0):
     p = Packet(packet_type=type,
                seq_num=sequence,
