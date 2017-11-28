@@ -10,7 +10,7 @@ import LA3.packet as packet
 
 WINDOW = 10
 FRAME_SIZE = 1024
-RECV_TIME_OUT = 2
+RECV_TIME_OUT = 5
 HANDSHAKE_TIME_OUT = 2
 SLIDE_TIME = 0.1
 
@@ -112,7 +112,7 @@ class rsocket():#__socket.socket):
                 return False
         return True
 
-    def sendall(self, data):
+    def sendall(self, data, stop=True):
         start = time.time()
         timer = None
         # mapping = {}
@@ -120,7 +120,7 @@ class rsocket():#__socket.socket):
         window = [-i for i in range(1, WINDOW + 1)]
         for i in range(0, WINDOW):
             window[i] = int(packet.grow_sequence(self.sequence, i))
-        package, self.sequence = packet.data_package(self.remote[0], self.remote[1], data, self.sequence)
+        package, self.sequence = packet.data_package(self.remote[0], self.remote[1], data, stop, self.sequence)
         original = package.copy()
         timeout = [False, False, 0]
         log.debug("init widow:{}".format(window))
@@ -159,13 +159,13 @@ class rsocket():#__socket.socket):
             log.debug("after send, widow:{}".format(self.getwindows(window)))
             log.debug("receive from remote")
             #receive slot
-            while True:
+            while not self.flushwindow(window):
                 self.conn.settimeout(SLIDE_TIME)
                 try:
                     data, route = self.conn.recvfrom(FRAME_SIZE)  # buffer size is 1024 bytes
                     p = packet.Packet.from_bytes(data)
                     log.debug("Recv:{}".format(p))
-                    if p.packet_type == packet.BYE:#BYE-SYN
+                    if p.packet_type == packet.BYE and p.seq_num == packet.minus_sequence(self.sequence, 1):#BYE-SYN
                         timer.cancel()
                         self.conn.settimeout(HANDSHAKE_TIME_OUT)
                         # for i in range(0, 2):
@@ -175,18 +175,18 @@ class rsocket():#__socket.socket):
                         spend = time.time()-start
                         rate = spend/len(original)
                         log.debug("resend {} times for BYE".format(int(rate * HANDSHAKE_TIME_OUT)))
-                        for i in range(0, int(rate * HANDSHAKE_TIME_OUT)):
+                        for i in range(0, 5+int(rate * HANDSHAKE_TIME_OUT)):
                             #BYE-ACK
                             self.conn.sendall(
                                 packet.control_package(packet.BYE, self.remote[0], self.remote[1],
                                                        uint32(0)).to_bytes())
-                            try:
-                                data = self.conn.recv(FRAME_SIZE)
-                            except Exception as e:
-                                continue
-                            recv_packet = packet.Packet.from_bytes(data)
-                            if recv_packet.packet_type == packet.BYE:#BYE-ACK2
-                                break
+                            # try:
+                            #     data = self.conn.recv(FRAME_SIZE)
+                            # except Exception as e:
+                            #     continue
+                            # recv_packet = packet.Packet.from_bytes(data)
+                            # if recv_packet.packet_type == packet.BYE:#BYE-ACK2
+                            #     break
                         return
                     elif p.packet_type == packet.DATA:
                         log.debug("cache data package")
@@ -232,14 +232,15 @@ class rsocket():#__socket.socket):
                 #     if timeout[2] == 10:
                 #         raise SocketException("Connection exception, maybe the last handshake package being dropped")
                 # el
-                if False and len(package) == 0:#need flush buffer
+                if len(package) == 0:#need flush buffer
                     spend = time.time() - start
                     rate = spend / len(original)
                     packs = len([w for w in window if isinstance(w, packet.Packet)])
                     log.debug("resend {} packs packages {} times to flush data".format(packs, int(packs * rate / RECV_TIME_OUT)))
                     timeout[2] = timeout[2] + 1
-                    if timeout[2] == int(rate / RECV_TIME_OUT):
-                        raise FlushException("Flush exception")
+                    if timeout[2] == 5 + int(rate / RECV_TIME_OUT):
+                        return
+                        # raise FlushException("Flush exception")
         timer.cancel()
 
     def recv_data_package(self, packet):
@@ -262,7 +263,7 @@ class rsocket():#__socket.socket):
         window = [-i for i in range(1, WINDOW + 1)]
         for i in range(0, WINDOW):
             window[i] = int(packet.grow_sequence(self.sequence, i))
-
+        self.conn.settimeout(RECV_TIME_OUT)
         while True:
             if isinstance(window[0], packet.Packet):
                 peek = window[0]
@@ -273,22 +274,22 @@ class rsocket():#__socket.socket):
                     spend = time.time()-start
                     rate = spend/packages
                     log.debug("resend {} times for BYE".format(int(rate * HANDSHAKE_TIME_OUT)))
-                    for i in range(0, int(rate * HANDSHAKE_TIME_OUT)):
+                    for i in range(0, 5+int(rate * HANDSHAKE_TIME_OUT)):
                         #BYE-SYN
                         self.conn.sendall(
-                            packet.control_package(packet.BYE, self.remote[0], self.remote[1], uint32(0)).to_bytes())
+                            packet.control_package(packet.BYE, self.remote[0], self.remote[1], packet.minus_sequence(self.sequence, 1)).to_bytes())
                         try:
-                            #BYE-ACK
-                            data = self.conn.recv(FRAME_SIZE)
+                           #BYE-ACK
+                           data = self.conn.recv(FRAME_SIZE)
                         except Exception as e:
-                            continue
+                           continue
                         recv_packet = packet.Packet.from_bytes(data)
                         if recv_packet.packet_type == packet.BYE:
-                            break
+                           break
                     # BYE-ACK2
-                    self.conn.sendall(
-                        packet.control_package(packet.BYE, self.remote[0], self.remote[1],
-                                               uint32(0)).to_bytes())
+                    # self.conn.sendall(
+                    #     packet.control_package(packet.BYE, self.remote[0], self.remote[1],
+                    #                            uint32(0)).to_bytes())
 
                     return cache
                 # p = window.pop(0)
@@ -333,7 +334,7 @@ class rsocket():#__socket.socket):
                     peek = window[0]
                     if len(peek.payload) == 0:
                         log.debug("pop terminate packet, se#{}".format(peek.seq_num))
-                        self.sequence = packet.grow_sequence(pop_packet.seq_num, 1)
+                        self.sequence = packet.grow_sequence(peek.seq_num, 1)
                         break
                     pop_packet = window.pop(0)
                     self.sequence = packet.grow_sequence(pop_packet.seq_num, 1)

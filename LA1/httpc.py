@@ -14,7 +14,7 @@ from LA1.http import http
 
 
 def create_http():
-    h = http(args.URL, args.port, args.arq)
+    h = http(args.URL, args.arq, args.port)
     h.setType(args.which)
     if args.verbose:
         h.setVerbosity(True)

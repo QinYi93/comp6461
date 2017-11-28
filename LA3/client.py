@@ -1,5 +1,7 @@
 import argparse
 import math
+import sys
+sys.path.extend(["./"])
 import LA3.rsocket as socket
 from numpy import uint32
 

@@ -1,7 +1,8 @@
-# import socket
+import sys
 import threading
 import ipaddress
 import argparse
+sys.path.extend(["./"])
 from LA3.packet import *
 import LA3.packet as packet
 import LA3.rsocket as socket

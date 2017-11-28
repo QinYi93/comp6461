@@ -4,6 +4,8 @@ import argparse
 import os
 import json
 import pathlib
+import sys
+sys.path.extend(["./"])
 from lockfile import LockFile
 from LA2.http import http
 import magic
@@ -123,7 +125,10 @@ def handle_client(conn, addr, dir):
                     r = http(400, "")
             if args.debugging:
                 print(r.headToString())
-            conn.sendall(r.headToString().encode("ascii"))
+            if args.arq:
+                conn.sendall(r.headToString().encode("ascii"), False)
+            else:
+                conn.sendall(r.headToString().encode("ascii"))
             conn.sendall(r.getBody())
             break
 

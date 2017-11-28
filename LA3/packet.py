@@ -31,9 +31,9 @@ def terminal_package(peer_ip, peer_port, sequence=0):
                payload="".encode("utf-8"))
     return p
 
-def data_package(peer_ip, peer_port, content, sequence=0):
+def data_package(peer_ip, peer_port, content, stop, sequence=0):
     p_list = list()
-    c_byte = content.encode("utf-8")
+    c_byte = content#.encode("utf-8")
     while len(c_byte) != 0:
         p_list.append(c_byte[:10])
         c_byte = c_byte[10:]
@@ -48,17 +48,23 @@ def data_package(peer_ip, peer_port, content, sequence=0):
         package.append(p)
         sequence = grow_sequence(sequence, 1)
         print(p)
-
-    p = terminal_package(peer_ip, peer_port, sequence)
-    package.append(p)
-    sequence = grow_sequence(sequence, 1)
+    if stop:
+        p = terminal_package(peer_ip, peer_port, sequence)
+        package.append(p)
+        sequence = grow_sequence(sequence, 1)
     return package, sequence
 
 
 def grow_sequence(sequence, add):
     se = uint32(sequence) + uint32(add)
-    if se < sequence:
+    if se == 0:
         se = se + uint32(1)
+    return se
+
+def minus_sequence(sequence, minus):
+    se = uint32(sequence) - uint32(minus)
+    if se == 0:
+        se = se - uint32(1)
     return se
 
 class Packet:

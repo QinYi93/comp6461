@@ -1,26 +1,30 @@
 # COMP6461 LA3
 *   pip install lockfile, pathlib, python-magic
+## MAC
 *   brew install libmagic
+## LINUX
+*   sudo apt install libmagci-dev
 
 #   Demo
 ##  Start router
-*   .\router_x64.exe --port=3000 --drop-rate=0.2 --max-delay=100ms --seed 2387230234324
+### WINDOWS 
+*   ./router/windows/router_x64.exe --port=3000 --drop-rate=0.2 --max-delay=100ms --seed 2387230234324
+### LINUX
+*   ./router/linux/router_x64 --port=3000 --drop-rate=0.2 --max-delay=100ms --seed 2387230234324
+### MAC
+*   ./router/mac/router --port=3000 --drop-rate=0.2 --max-delay=100ms --seed 2387230234324
 
 ##  Start File Server
-*   python ./LA2/httpfs.py -v -p 8080 -d .
+*   python ./LA2/httpfs.py -arq -v -p 8080 -d .
 
 ##  Run Client
-*   python LA1/httpc.py get -v -p 8080 "http://localhost/"
-*   python LA1/httpc.py get -v -p 8080 "http://localhost/foo"
-*   python LA1/httpc.py post -v -p 8080 -head Content-Type:application/json -d "{\"Assignment\":\"2\"}" "http://localhost/bar"
+*   python LA1/httpc.py -arq get -v -p 8080 "http://localhost/"
+*   python LA1/httpc.py -arq get -v -p 8080 "http://localhost/foo"
+*   python LA1/httpc.py -arq post -v -p 8080 -head Content-Type:application/json -d "{\"Assignment\":\"2\"}" "http://localhost/bar"
 
 #   Bonus
-*   python LA1/httpc.py get -v -p 8080 -head Content-disposition:inline "http://localhost/foo"
-*   python LA1/httpc.py get -v -p 8080 -head Content-disposition:attachment "http://localhost/foo"
-*   http://localhost:8080/foo
-*   http://localhost:8080/foo?inline
-*   http://localhost:8080/python
-*   http://localhost:8080/python?inline
+*   python LA1/httpc.py -arq get -v -p 8080 -head Content-disposition:inline "http://localhost/foo"
+*   python LA1/httpc.py -arq get -v -p 8080 -head Content-disposition:attachment "http://localhost/foo"
 
 #   Test Case
 *   python LA2/httpfstest.py
