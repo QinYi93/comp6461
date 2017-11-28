@@ -4,7 +4,7 @@
 
 #   Demo
 *   python ./LA2/httpfs.py -v -p 8080 -d .
-*
+
 *   python LA1/httpc.py get -v -p 8080 "http://localhost/"
 *   python LA1/httpc.py get -v -p 8080 "http://localhost/foo"
 *   python LA1/httpc.py post -v -p 8080 -head Content-Type:application/json -d "{\"Assignment\":\"2\"}" "http://localhost/bar"

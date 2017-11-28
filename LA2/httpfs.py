@@ -5,7 +5,7 @@ import os
 import json
 import pathlib
 from lockfile import LockFile
-from http import http
+from LA2.http import http
 import magic
 
 
@@ -22,13 +22,29 @@ def run_server(host, port, dir):
     finally:
         listener.close()
 
+def run_arq_server(host, port, dir):
+    import LA3.rsocket as socket
+    listener = socket.rsocket()
+    try:
+        listener.bind((host, port))
+        listener.listen(10)
+        if args.debugging:
+            print('Echo server is listening at', port)
+        while True:
+            conn, addr = listener.accept()
+            threading.Thread(target=handle_client, args=(conn, addr, dir)).start()
+    finally:
+        listener.close()
 
 def handle_client(conn, addr, dir):
     if args.debugging:
         print('Handle New client from', addr)
     try:
         while True:
-            data = conn.recv(2048)
+            if args.arq:
+                data = conn.recvall()
+            else:
+                data = conn.recv(2048)
             #解码：把二进制转换成字符串？
             data = data.decode("utf-8")
             if not data:
@@ -142,7 +158,11 @@ parser = argparse.ArgumentParser(description='Socket based HTTP fileserver')
 parser.add_argument("-p", action="store", dest="port", help="Set server port", type=int, default=8080)
 parser.add_argument("-v", action="store_true", dest="debugging", help="Echo debugging mesages", default=False)
 parser.add_argument("-d", action="store", dest="directory", help="Set directory path", default='./')
+parser.add_argument("-arq", action='store_true', dest="arq", default=False, help="Use reliable ARQ-UDP socket.")
 
 args = parser.parse_args()
 
-run_server('', args.port, args.directory)
+if args.arq:
+    run_arq_server('', args.port, args.directory)
+else:
+    run_server('', args.port, args.directory)

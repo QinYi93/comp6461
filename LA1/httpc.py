@@ -14,7 +14,7 @@ from LA1.http import http
 
 
 def create_http():
-    h = http(args.URL, args.port)
+    h = http(args.URL, args.port, args.arq)
     h.setType(args.which)
     if args.verbose:
         h.setVerbosity(True)
@@ -47,7 +47,7 @@ def create_http():
 
 parser = argparse.ArgumentParser(description="httpc is a curl-like application but supports HTTP protocol only.")
 # parser.add_argument('request_type', help="type of request, GET or POST", choices=['GET', 'get', 'post', 'POST'])
-
+parser.add_argument("-arq", action='store_true', dest="arq", default=False, help="Use reliable ARQ-UDP socket.")
 subparsers = parser.add_subparsers(help='commands')
 
 get_parser = subparsers.add_parser('get', help='executes a HTTP GET request and prints the response.')

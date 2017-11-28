@@ -1,6 +1,6 @@
 import argparse
 import math
-import rsocket as socket
+import LA3.rsocket as socket
 from numpy import uint32
 
 

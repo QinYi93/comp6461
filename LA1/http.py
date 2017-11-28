@@ -5,9 +5,10 @@ from urllib.parse import urlparse
 class http:
     counting = 0
 
-    def __init__(self, url, port=80):
+    def __init__(self, url, arq, port=80):
         self.url = urlparse(url)
         self.port = port
+        self.arq = arq
         self.host = self.url.netloc
         self.path = self.url.path
         if self.path == "":
@@ -50,12 +51,19 @@ class http:
         return self
     def send(self):
         self.counting = self.counting+1
-        conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        if self.arq:
+            import LA3.rsocket as socket
+            conn = socket.rsocket()
+        else:
+            conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
             conn.connect((self.host, self.port))
             print(self.content)
             conn.sendall(self.content.encode("utf-8"))
-            response = conn.recv(2048, socket.MSG_WAITALL)
+            if self.arq:
+                response = conn.recvall()
+            else:
+                response = conn.recv(2048, socket.MSG_WAITALL)
             # print(response)
             reply = response.decode("utf-8")
             return self.status(reply)

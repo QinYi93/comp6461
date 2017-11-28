@@ -2,9 +2,9 @@
 import threading
 import ipaddress
 import argparse
-from packet import *
-import packet
-import rsocket as socket
+from LA3.packet import *
+import LA3.packet as packet
+import LA3.rsocket as socket
 
 def deliver_msg(recv_list):
     message = list()

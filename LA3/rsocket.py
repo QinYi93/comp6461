@@ -6,7 +6,7 @@ from numpy import uint32
 from threading import Timer
 
 import ipaddress
-import packet
+import LA3.packet as packet
 
 WINDOW = 10
 FRAME_SIZE = 1024
