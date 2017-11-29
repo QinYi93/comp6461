@@ -15,22 +15,24 @@
 *   ./router/mac/router --port=3000 --drop-rate=0.2 --max-delay=100ms --seed 2387230234324
 
 ##  Start File Server
-*   python ./LA2/httpfs.py -arq -v -p 8080 -d .
+*   python3 ./LA2/httpfs.py -arq -v -p 8080 -d .
 
 ##  Run Client
-*   python LA1/httpc.py -arq get -v -p 8080 "http://localhost/"
-*   python LA1/httpc.py -arq get -v -p 8080 "http://localhost/foo"
-*   python LA1/httpc.py -arq post -v -p 8080 -head Content-Type:application/json -d "{\"Assignment\":\"2\"}" "http://localhost/bar"
+*   python3 LA1/httpc.py -arq get -v -p 8080 "http://localhost/"
+*   python3 LA1/httpc.py -arq get -v -p 8080 -o "output" "http://localhost/foo"
+*   python3 LA1/httpc.py -arq get -v -p 8080 -o "output" "http://localhost/python"
+*   python3 LA1/httpc.py -arq get -v -p 8080 -o "output" "http://localhost/LA3.pdf"
+*   python3 LA1/httpc.py -arq post -v -p 8080 -head Content-Type:application/json -d "{\"Assignment\":\"2\"}" "http://localhost/bar"
 
 #   Bonus
-*   python LA1/httpc.py -arq get -v -p 8080 -head Content-disposition:inline "http://localhost/foo"
-*   python LA1/httpc.py -arq get -v -p 8080 -head Content-disposition:attachment "http://localhost/foo"
+*   python3 LA1/httpc.py -arq get -v -p 8080 -o "output" -head Content-disposition:inline "http://localhost/foo"
+*   python3 LA1/httpc.py -arq get -v -p 8080 -o "output" -head Content-disposition:attachment "http://localhost/foo"
 
 #   Test Case
-*   python LA2/httpfstest.py
-*   python LA2/multiwrite.py
-*   python LA2/multiread.py
-*   python LA2/readwrite.py
+*   python3 LA2/httpfstest.py
+*   python3 LA2/multiwrite.py
+*   python3 LA2/multiread.py
+*   python3 LA2/readwrite.py
 
 # Reference
 * HTTP 1.0 Protocol

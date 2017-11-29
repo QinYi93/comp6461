@@ -65,8 +65,34 @@ class http:
             else:
                 response = conn.recv(2048, socket.MSG_WAITALL)
             # print(response)
-            reply = response.decode("utf-8")
-            return self.status(reply)
+            status = bytearray()#"HTTP/1.0 200 OK"
+            fileByte = bytearray()
+            if self.arq:
+                while True:
+                    if response[0] == 13 and response[1] == 10 \
+                            and response[2] == 13 and response[3] == 10:
+                        fileByte = response[4:]
+                        self.body = fileByte
+                        break
+                    else:
+                        a = response.pop(0)
+                        print(a)
+                        status.append(a)
+            else:
+                reply = response.decode("utf-8")
+            if self.arq:
+                headArray = status.decode("utf-8").split("\r\n")
+                line1 = headArray.pop(0).split()
+                # if line1[1] == '200':
+                self.state = line1[1]
+                print("\n====>Status:" + " ".join(line1[2:]) + "  Code:" + line1[1])
+                self.headMap = {}
+                for key in headArray:
+                    keyValue = key.split(":")
+                    self.headMap[keyValue[0]] = keyValue[1].strip()
+                return self
+            else:
+                return self.status(reply)
         except OSError as e:
             print(e)
         finally:

@@ -81,10 +81,16 @@ while True:
         break
 
 if args.output:
-    o = open(args.output, 'w')
-    o.write(reply.body)
-    o.close()
-if h.getVerbosity():
-    print("\nOutput:\n\n" + reply.reply)
-else:
-    print("\nOutput:\n\n" + reply.body)
+    print(reply.headMap)
+    if 'text' in  reply.headMap['Content-Type']:
+        o = open(args.output, 'w')
+        o.write(reply.body.decode("utf-8"))
+        o.close()
+    else:
+        with open(args.output, 'wb') as f:
+            f.write(reply.body)
+elif not args.arq:
+    if h.getVerbosity():
+        print("\nOutput:\n\n" + reply.reply)
+    else:
+        print("\nOutput:\n\n" + reply.body)

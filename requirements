@@ -1,0 +1,5 @@
+urllib
+lockfile
+pathlib
+python-magic
+numpy
