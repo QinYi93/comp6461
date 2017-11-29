@@ -16,7 +16,7 @@ def run_client(router_addr, router_port, server_addr, server_port):
         """
     conn = socket.rsocket((router_addr, router_port), 4294967295-8)
     conn.connect((server_addr, server_port))
-    conn.sendall(content)
+    conn.sendall(content.encode("utf-8"))
     # conn.sendall(content)
 
     se = uint32(4294967295)

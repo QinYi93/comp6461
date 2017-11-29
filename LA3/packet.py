@@ -57,12 +57,12 @@ def data_package(peer_ip, peer_port, content, stop, sequence=0):
 
 def grow_sequence(sequence, add):
     se = uint32(sequence) + uint32(add)
-    if se == 0:
+    if se < sequence:
         se = se + uint32(1)
     return se
 
-def minus_sequence(sequence, minus):
-    se = uint32(sequence) - uint32(minus)
+def minus_sequence(sequence):
+    se = uint32(sequence) - uint32(1)
     if se == 0:
         se = se - uint32(1)
     return se

@@ -165,7 +165,7 @@ class rsocket():#__socket.socket):
                     data, route = self.conn.recvfrom(FRAME_SIZE)  # buffer size is 1024 bytes
                     p = packet.Packet.from_bytes(data)
                     log.debug("Recv:{}".format(p))
-                    if p.packet_type == packet.BYE and p.seq_num == packet.minus_sequence(self.sequence, 1):#BYE-SYN
+                    if p.packet_type == packet.BYE and p.seq_num == packet.minus_sequence(self.sequence):#BYE-SYN
                         timer.cancel()
                         self.conn.settimeout(HANDSHAKE_TIME_OUT)
                         # for i in range(0, 2):
@@ -212,9 +212,9 @@ class rsocket():#__socket.socket):
                         print("UFO")
                 except socket.timeout:
                     break
-            log.debug("slide window")
             while not isinstance(window[0], packet.Packet):
                 if len(package) > 0:
+                    log.debug("slide window")
                     window[0] = package.pop(0)
                     window.append(window.pop(0))
                 else:
@@ -263,7 +263,7 @@ class rsocket():#__socket.socket):
         window = [-i for i in range(1, WINDOW + 1)]
         for i in range(0, WINDOW):
             window[i] = int(packet.grow_sequence(self.sequence, i))
-        self.conn.settimeout(RECV_TIME_OUT)
+        self.conn.settimeout(2*RECV_TIME_OUT)
         while True:
             if isinstance(window[0], packet.Packet):
                 peek = window[0]
@@ -277,7 +277,7 @@ class rsocket():#__socket.socket):
                     for i in range(0, 5+int(rate * HANDSHAKE_TIME_OUT)):
                         #BYE-SYN
                         self.conn.sendall(
-                            packet.control_package(packet.BYE, self.remote[0], self.remote[1], packet.minus_sequence(self.sequence, 1)).to_bytes())
+                            packet.control_package(packet.BYE, self.remote[0], self.remote[1], packet.minus_sequence(self.sequence)).to_bytes())
                         try:
                            #BYE-ACK
                            data = self.conn.recv(FRAME_SIZE)
