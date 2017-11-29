@@ -75,7 +75,11 @@ parser.add_argument("URL", help="HTTP URL address")
 args = parser.parse_args()
 
 h = create_http()
-reply = h.send()
+while True:
+    reply = h.send()
+    if reply:
+        break
+
 if args.output:
     o = open(args.output, 'w')
     o.write(reply.body)

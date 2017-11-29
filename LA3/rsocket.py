@@ -238,7 +238,7 @@ class rsocket():#__socket.socket):
                     packs = len([w for w in window if isinstance(w, packet.Packet)])
                     log.debug("resend {} packs packages {} times to flush data".format(packs, int(packs * rate / RECV_TIME_OUT)))
                     timeout[2] = timeout[2] + 1
-                    if timeout[2] == 5 + int(rate / RECV_TIME_OUT):
+                    if timeout[2] == 5 + int(2*rate / RECV_TIME_OUT):
                         return
                         # raise FlushException("Flush exception")
         timer.cancel()
@@ -263,7 +263,7 @@ class rsocket():#__socket.socket):
         window = [-i for i in range(1, WINDOW + 1)]
         for i in range(0, WINDOW):
             window[i] = int(packet.grow_sequence(self.sequence, i))
-        self.conn.settimeout(2*RECV_TIME_OUT)
+        self.conn.settimeout(20*RECV_TIME_OUT)
         while True:
             if isinstance(window[0], packet.Packet):
                 peek = window[0]
